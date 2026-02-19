@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VAPE.NOTE — Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;600&family=Bebas+Neue&family=Noto+Sans+KR:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg: #F4EFE6;
+    --dark: #1C1A17;
+    --mid: #6B6560;
+    --accent: #C4874A;
+    --accent-light: #E8C9A0;
+    --white: #FDFAF5;
+    --border: #DDD5C8;
+    --danger: #C45A4A;
+    --success: #4A8A5C;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--dark); font-family: 'Noto Sans KR', sans-serif; min-height: 100vh; }
+
+  /* ============ 로그인 ============ */
+  #login-page {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  }
+  .login-box {
+    width: 400px; padding: 56px 48px;
+    background: var(--white); border: 1px solid var(--border);
+  }
+  .login-logo {
+    font-family: 'Bebas Neue', sans-serif; font-size: 28px;
+    letter-spacing: 0.15em; color: var(--dark); margin-bottom: 8px;
+  }
+  .login-logo span { color: var(--accent); }
+  .login-sub {
+    font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--mid); margin-bottom: 40px;
+  }
+  .form-field { margin-bottom: 20px; }
+  .form-field label {
+    display: block; font-size: 11px; font-weight: 500;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--mid); margin-bottom: 8px;
+  }
+  .form-field input, .form-field select, .form-field textarea {
+    width: 100%; padding: 12px 16px;
+    border: 1px solid var(--border); background: var(--bg);
+    font-size: 13px; font-family: 'Noto Sans KR', sans-serif;
+    color: var(--dark); outline: none; transition: border-color 0.2s;
+  }
+  .form-field input:focus, .form-field select:focus, .form-field textarea:focus {
+    border-color: var(--accent);
+  }
+  .form-field textarea { resize: vertical; min-height: 80px; }
+  .btn-primary {
+    width: 100%; padding: 14px; background: var(--dark); color: var(--white);
+    border: none; font-size: 13px; font-weight: 500; letter-spacing: 0.1em;
+    font-family: 'Noto Sans KR', sans-serif; cursor: pointer; transition: background 0.2s;
+  }
+  .btn-primary:hover { background: var(--accent); }
+  .error-msg {
+    font-size: 12px; color: var(--danger); margin-top: 12px; display: none;
+  }
+
+  /* ============ 대시보드 ============ */
+  #dashboard { display: none; }
+
+  .admin-nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(244,239,230,0.95); backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 40px;
+  }
+  .admin-logo {
+    font-family: 'Bebas Neue', sans-serif; font-size: 20px;
+    letter-spacing: 0.15em; color: var(--dark);
+  }
+  .admin-logo span { color: var(--accent); }
+  .admin-logo small {
+    font-family: 'Noto Sans KR', sans-serif; font-size: 10px;
+    color: var(--mid); letter-spacing: 0.15em; margin-left: 12px;
+    font-weight: 500; text-transform: uppercase;
+  }
+  .btn-logout {
+    padding: 8px 20px; border: 1px solid var(--border);
+    background: transparent; font-size: 12px; color: var(--mid);
+    font-family: 'Noto Sans KR', sans-serif; cursor: pointer; transition: all 0.2s;
+  }
+  .btn-logout:hover { background: var(--dark); color: var(--white); border-color: var(--dark); }
+
+  .admin-body { display: grid; grid-template-columns: 220px 1fr; min-height: calc(100vh - 57px); }
+
+  /* 사이드바 */
+  .admin-sidebar {
+    background: var(--white); border-right: 1px solid var(--border);
+    padding: 32px 0;
+  }
+  .sidebar-section {
+    font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--accent); padding: 0 24px; margin-bottom: 12px;
+  }
+  .sidebar-menu { list-style: none; margin-bottom: 32px; }
+  .sidebar-menu li a {
+    display: block; padding: 10px 24px;
+    font-size: 13px; color: var(--mid); text-decoration: none;
+    transition: all 0.15s; cursor: pointer;
+  }
+  .sidebar-menu li a:hover { color: var(--dark); background: var(--bg); }
+  .sidebar-menu li a.active {
+    color: var(--dark); background: var(--bg);
+    border-left: 2px solid var(--accent);
+  }
+
+  /* 메인 컨텐츠 */
+  .admin-main { padding: 40px; overflow-y: auto; }
+  .page-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 32px; padding-bottom: 24px; border-bottom: 1px solid var(--border);
+  }
+  .page-title {
+    font-family: 'Noto Serif KR', serif; font-size: 22px; font-weight: 400;
+  }
+  .btn-add {
+    padding: 12px 28px; background: var(--accent); color: var(--white);
+    border: none; font-size: 13px; font-weight: 500; letter-spacing: 0.05em;
+    font-family: 'Noto Sans KR', sans-serif; cursor: pointer; transition: background 0.2s;
+  }
+  .btn-add:hover { background: #A86E35; }
+
+  /* 제품 목록 테이블 */
+  .product-table { width: 100%; border-collapse: collapse; }
+  .product-table th {
+    text-align: left; padding: 10px 16px;
+    font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--mid); border-bottom: 1px solid var(--border);
+    font-weight: 500;
+  }
+  .product-table th.sortable {
+    cursor: pointer; user-select: none; white-space: nowrap;
+    transition: color 0.15s;
+  }
+  .product-table th.sortable:hover { color: var(--dark); }
+  .product-table th.sort-active { color: var(--accent); }
+  .sort-arrow { display: inline-block; margin-left: 5px; font-size: 9px; opacity: 0.5; }
+  .sort-active .sort-arrow { opacity: 1; }
+  .product-table td {
+    padding: 14px 16px; font-size: 13px; color: var(--dark);
+    border-bottom: 1px solid var(--border); vertical-align: middle;
+  }
+  .product-table tr:hover td { background: var(--white); }
+  .cat-badge {
+    display: inline-block; padding: 3px 10px;
+    font-size: 10px; letter-spacing: 0.1em;
+    background: var(--bg); color: var(--accent); border: 1px solid var(--accent-light);
+  }
+  .table-actions { display: flex; gap: 8px; }
+  .btn-edit, .btn-delete {
+    padding: 6px 14px; font-size: 11px; border: 1px solid var(--border);
+    background: transparent; cursor: pointer; font-family: 'Noto Sans KR', sans-serif;
+    transition: all 0.15s; color: var(--mid);
+  }
+  .btn-edit:hover { border-color: var(--dark); color: var(--dark); }
+  .btn-delete:hover { background: var(--danger); border-color: var(--danger); color: var(--white); }
+
+  /* 폼 패널 (오른쪽 슬라이드) */
+  #form-panel {
+    position: fixed; top: 0; right: -600px; width: 580px; height: 100vh;
+    background: var(--white); border-left: 1px solid var(--border);
+    z-index: 200; transition: right 0.35s cubic-bezier(0.4,0,0.2,1);
+    display: flex; flex-direction: column;
+  }
+  #form-panel-scroll {
+    flex: 1; overflow-y: auto; padding: 40px 40px 24px;
+  }
+  #form-panel.open { right: 0; }
+  .panel-overlay {
+    position: fixed; inset: 0; background: rgba(28,26,23,0.4);
+    z-index: 199; display: none;
+  }
+  .panel-overlay.open { display: block; }
+  .panel-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 32px; padding-bottom: 24px; border-bottom: 1px solid var(--border);
+  }
+  .panel-title {
+    font-family: 'Noto Serif KR', serif; font-size: 18px; font-weight: 400;
+  }
+  .btn-close {
+    width: 32px; height: 32px; background: var(--dark); color: var(--white);
+    border: none; font-size: 14px; cursor: pointer; display: flex;
+    align-items: center; justify-content: center;
+  }
+
+  /* 폼 내부 */
+  .form-section-label {
+    font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--accent); margin: 28px 0 16px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .form-section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-field-inline { flex: 1; }
+
+  /* 스케일 슬라이더 */
+  .scale-group { display: flex; gap: 8px; }
+  .scale-opt {
+    flex: 1; padding: 9px 4px; border: 1px solid var(--border);
+    text-align: center; font-size: 12px; color: var(--mid);
+    background: transparent; cursor: pointer; transition: all 0.15s;
+    font-family: 'Noto Sans KR', sans-serif;
+  }
+  .scale-opt:hover { border-color: var(--dark); color: var(--dark); }
+  .scale-opt.selected { background: var(--dark); border-color: var(--dark); color: var(--white); }
+
+  /* 태그 입력 */
+  .tag-input-wrap {
+    border: 1px solid var(--border); padding: 8px;
+    display: flex; flex-wrap: wrap; gap: 6px; cursor: text;
+    background: var(--bg); min-height: 46px; align-items: center;
+  }
+  .tag-input-wrap:focus-within { border-color: var(--accent); }
+  .tag-item {
+    display: flex; align-items: center; gap: 4px;
+    background: var(--dark); color: var(--white);
+    padding: 3px 10px; font-size: 11px;
+  }
+  .tag-remove {
+    cursor: pointer; opacity: 0.6; font-size: 12px;
+    background: none; border: none; color: white; padding: 0;
+  }
+  .tag-remove:hover { opacity: 1; }
+  .tag-input {
+    border: none; background: transparent; outline: none;
+    font-size: 12px; font-family: 'Noto Sans KR', sans-serif;
+    color: var(--dark); min-width: 80px;
+  }
+
+  /* 컬러 선택 */
+  .color-select-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .color-opt {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border: 1px solid var(--border);
+    font-size: 11px; color: var(--mid); cursor: pointer;
+    transition: all 0.15s; font-family: 'Noto Sans KR', sans-serif;
+    background: transparent;
+  }
+  .color-opt:hover { border-color: var(--dark); color: var(--dark); }
+  .color-opt.selected { border-color: var(--dark); color: var(--dark); background: var(--white); font-weight: 500; }
+  .color-dot { width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.12); }
+
+  /* 일회용 맛 추가 */
+  .flavor-card {
+    border: 1px solid var(--border); padding: 20px;
+    margin-bottom: 16px; background: var(--bg); position: relative;
+  }
+  .flavor-card-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 16px;
+  }
+  .flavor-card-title { font-size: 13px; font-weight: 500; color: var(--dark); }
+  .btn-remove-flavor {
+    background: none; border: none; color: var(--mid); cursor: pointer;
+    font-size: 16px; transition: color 0.15s;
+  }
+  .btn-remove-flavor:hover { color: var(--danger); }
+  .btn-add-flavor {
+    width: 100%; padding: 12px; border: 1px dashed var(--border);
+    background: transparent; font-size: 12px; color: var(--mid);
+    font-family: 'Noto Sans KR', sans-serif; cursor: pointer;
+    transition: all 0.15s; margin-top: 8px;
+  }
+  .btn-add-flavor:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* 폼 제출 버튼 */
+  .panel-footer {
+    background: var(--white); border-top: 1px solid var(--border);
+    padding: 20px 40px; display: flex; gap: 12px; flex-shrink: 0;
+  }
+  .btn-save {
+    flex: 1; padding: 14px; background: var(--accent); color: var(--white);
+    border: none; font-size: 13px; font-weight: 500; letter-spacing: 0.08em;
+    font-family: 'Noto Sans KR', sans-serif; cursor: pointer; transition: background 0.2s;
+  }
+  .btn-save:hover { background: #A86E35; }
+  .btn-save:disabled { background: var(--border); cursor: not-allowed; }
+  .btn-cancel {
+    padding: 14px 28px; border: 1px solid var(--border);
+    background: transparent; font-size: 13px; color: var(--mid);
+    font-family: 'Noto Sans KR', sans-serif; cursor: pointer; transition: all 0.2s;
+  }
+  .btn-cancel:hover { border-color: var(--dark); color: var(--dark); }
+
+  /* 토스트 */
+  #toast {
+    position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%);
+    padding: 14px 28px; background: var(--dark); color: var(--white);
+    font-size: 13px; font-family: 'Noto Sans KR', sans-serif;
+    z-index: 999; opacity: 0; transition: opacity 0.3s; pointer-events: none;
+  }
+  #toast.show { opacity: 1; }
+  #toast.success { background: var(--success); }
+  #toast.error { background: var(--danger); }
+
+  /* 빈 상태 */
+  .empty-state {
+    text-align: center; padding: 80px 0;
+    font-size: 14px; color: var(--mid);
+  }
+  .loading { text-align: center; padding: 60px 0; color: var(--mid); font-size: 13px; }
+</style>
+</head>
+<body>
+
+<!-- 로그인 페이지 -->
+<div id="login-page">
+  <div class="login-box">
+    <div class="login-logo">VAPE<span>.</span>NOTE</div>
+    <p class="login-sub">Admin</p>
+    <div class="form-field">
+      <label>이메일</label>
+      <input type="email" id="login-email" placeholder="admin@email.com">
+    </div>
+    <div class="form-field">
+      <label>비밀번호</label>
+      <input type="password" id="login-pw" placeholder="••••••••"
+        onkeydown="if(event.key==='Enter') doLogin()">
+    </div>
+    <button class="btn-primary" onclick="doLogin()">로그인</button>
+    <p class="error-msg" id="login-error"></p>
+  </div>
+</div>
+
+<!-- 대시보드 -->
+<div id="dashboard">
+  <nav class="admin-nav">
+    <div class="admin-logo">VAPE<span>.</span>NOTE <small>Admin</small></div>
+    <button class="btn-logout" onclick="doLogout()">로그아웃</button>
+  </nav>
+  <div class="admin-body">
+    <aside class="admin-sidebar">
+      <p class="sidebar-section">메뉴</p>
+      <ul class="sidebar-menu">
+        <li><a class="active" onclick="showSection('products')">📦 전체 제품</a></li>
+        <li><a onclick="showSection('products', '액상')">  액상</a></li>
+        <li><a onclick="showSection('products', '기기')">  기기</a></li>
+        <li><a onclick="showSection('products', '일회용')">  일회용</a></li>
+      </ul>
+    </aside>
+    <main class="admin-main">
+      <div id="section-products">
+        <div class="page-header">
+          <h1 class="page-title" id="section-title">전체 제품</h1>
+          <button class="btn-add" onclick="openForm()">+ 새 제품 추가</button>
+        </div>
+        <div style="display:flex; gap:10px; margin-bottom:20px; align-items:center;">
+          <input id="admin-search" type="text" placeholder="브랜드명 또는 제품명 검색"
+            oninput="applyAdminFilter()"
+            style="flex:1; padding:9px 14px; border:1px solid var(--border);
+                   background:var(--white); font-size:13px;
+                   font-family:'Noto Sans KR',sans-serif; color:var(--dark); outline:none;">
+          <select id="admin-sort" onchange="applyAdminFilter()"
+            style="padding:9px 32px 9px 12px; border:1px solid var(--border);
+                   background:var(--white); font-size:13px;
+                   font-family:'Noto Sans KR',sans-serif; color:var(--mid);
+                   outline:none; cursor:pointer; appearance:none; -webkit-appearance:none;
+                   background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236B6560'/%3E%3C/svg%3E\");
+                   background-repeat:no-repeat; background-position:right 10px center;">
+            <option value="newest">최신등록순</option>
+            <option value="name">이름순</option>
+            <option value="category">카테고리순</option>
+          </select>
+        </div>
+        <div id="product-list-wrap">
+          <p class="loading">로딩 중...</p>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- 폼 오버레이 -->
+<div class="panel-overlay" id="panel-overlay" onclick="closeForm()"></div>
+
+<!-- 제품 등록/수정 패널 -->
+<div id="form-panel">
+  <div id="form-panel-scroll">
+    <div class="panel-header">
+      <h2 class="panel-title" id="panel-title">새 제품 추가</h2>
+      <button class="btn-close" onclick="closeForm()">✕</button>
+    </div>
+
+    <form id="product-form" onsubmit="return false;">
+
+      <!-- 카테고리 -->
+      <div class="form-field">
+        <label>카테고리</label>
+        <select id="f-category" onchange="onCategoryChange()">
+          <option value="">선택하세요</option>
+          <option value="액상">액상</option>
+          <option value="기기">기기</option>
+          <option value="일회용">일회용</option>
+        </select>
+      </div>
+
+      <!-- 공통 기본 정보 -->
+      <div class="form-section-label">기본 정보</div>
+      <div class="form-row">
+        <div class="form-field">
+          <label>브랜드</label>
+          <input type="text" id="f-brand" placeholder="브랜드명">
+        </div>
+        <div class="form-field">
+          <label>제품명</label>
+          <input type="text" id="f-name" placeholder="제품명">
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label>썸네일 이미지 URL</label>
+        <input type="text" id="f-thumbnail" placeholder="https://...">
+      </div>
+
+      <!-- 동적 영역 -->
+      <div id="dynamic-fields"></div>
+
+    </form>
+  </div>
+
+  <div class="panel-footer">
+    <button class="btn-cancel" onclick="closeForm()">취소</button>
+    <button class="btn-save" id="btn-save" onclick="saveProduct()">저장하기</button>
+  </div>
+</div>
+
+<!-- 토스트 -->
+<div id="toast"></div>
+
+<script>
+// ============================================================
+// Supabase 초기화 — URL과 KEY를 내 것으로 교체
+// ============================================================
+const SUPABASE_URL = 'https://vfpjimhvdqsdmkegnmqn.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZmcGppbWh2ZHFzZG1rZWdubXFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzOTczNjYsImV4cCI6MjA4Njk3MzM2Nn0.97ktcoRUXe6UB3zNoP_2Uw9NGt49EKkhHF8rO8dqQSg';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ============================================================
+// 컬러 맵
+// ============================================================
+const colorMap = {
+  black: '#1C1A17', white: '#FDFAF5', gray: '#9B9590', silver: '#B8B4AE',
+  red: '#E25C5C', pink: '#E87AAE', orange: '#E8923A', yellow: '#E8C53A',
+  green: '#5CBE6E', mint: '#5CBEB0', blue: '#5C8AE2', navy: '#2C3E7A',
+  purple: '#8A5CE2', brown: '#7A4E2C', mixed: 'conic-gradient(#E25C5C,#E8C53A,#5CBE6E,#5C8AE2,#8A5CE2,#E25C5C)'
+};
+const colorLabel = {
+  black: '블랙', white: '화이트', gray: '그레이', silver: '실버',
+  red: '레드', pink: '핑크', orange: '오렌지', yellow: '옐로',
+  green: '그린', mint: '민트', blue: '블루', navy: '네이비',
+  purple: '퍼플', brown: '브라운', mixed: '혼합'
+};
+
+// ============================================================
+// 상태
+// ============================================================
+let currentFilter = null;
+let editingId = null;
+let flavorCount = 0;
+
+// ============================================================
+// 인증
+// ============================================================
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pw = document.getElementById('login-pw').value;
+  const errEl = document.getElementById('login-error');
+  errEl.style.display = 'none';
+
+  const { error } = await sb.auth.signInWithPassword({ email, password: pw });
+  if (error) {
+    errEl.textContent = '이메일 또는 비밀번호가 틀렸어요.';
+    errEl.style.display = 'block';
+    return;
+  }
+  showDashboard();
+}
+
+async function doLogout() {
+  await sb.auth.signOut();
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('login-page').style.display = 'flex';
+}
+
+async function showDashboard() {
+  document.getElementById('login-page').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+  loadProducts();
+}
+
+// 세션 유지
+sb.auth.onAuthStateChange((event, session) => {
+  if (session) showDashboard();
+});
+
+// ============================================================
+// 섹션 전환
+// ============================================================
+function showSection(section, filter) {
+  currentFilter = filter || null;
+  document.querySelectorAll('.sidebar-menu a').forEach(a => a.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('section-title').textContent = filter || '전체 제품';
+  loadProducts();
+}
+
+// ============================================================
+// 제품 목록 로드
+// ============================================================
+let allProductsCache = [];
+let colSortKey = null;   // 'brand' | 'name' | 'inhale' | null
+let colSortAsc = true;
+
+async function loadProducts() {
+  const wrap = document.getElementById('product-list-wrap');
+  wrap.innerHTML = '<p class="loading">로딩 중...</p>';
+
+  let query = sb.from('products').select('*').order('created_at', { ascending: false });
+  if (currentFilter) query = query.eq('category', currentFilter);
+
+  const { data, error } = await query;
+  if (error) { wrap.innerHTML = '<p class="empty-state">불러오기 실패. 콘솔 확인해봐.</p>'; console.error(error); return; }
+
+  allProductsCache = data || [];
+  applyAdminFilter();
+}
+
+function toggleColSort(key) {
+  if (colSortKey === key) {
+    colSortAsc = !colSortAsc;
+  } else {
+    colSortKey = key;
+    colSortAsc = true;
+  }
+  // 드롭다운 정렬은 초기화
+  const sortEl = document.getElementById('admin-sort');
+  if (sortEl) sortEl.value = 'newest';
+  applyAdminFilter();
+}
+
+function applyAdminFilter() {
+  const wrap = document.getElementById('product-list-wrap');
+  const q = (document.getElementById('admin-search')?.value || '').trim().toLowerCase();
+  const sort = document.getElementById('admin-sort')?.value || 'newest';
+
+  let list = [...allProductsCache];
+
+  // 검색
+  if (q) {
+    list = list.filter(p =>
+      p.name.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q)
+    );
+  }
+
+  // 컬럼 클릭 정렬 우선, 없으면 드롭다운 정렬
+  if (colSortKey) {
+    list.sort((a, b) => {
+      const va = (a[colSortKey] || '').toLowerCase();
+      const vb = (b[colSortKey] || '').toLowerCase();
+      return colSortAsc
+        ? va.localeCompare(vb, 'ko')
+        : vb.localeCompare(va, 'ko');
+    });
+  } else if (sort === 'name') {
+    list.sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+  } else if (sort === 'category') {
+    const order = { '액상': 0, '기기': 1, '일회용': 2 };
+    list.sort((a, b) => (order[a.category] ?? 9) - (order[b.category] ?? 9));
+  }
+
+  if (!list.length) {
+    wrap.innerHTML = '<p class="empty-state">조건에 맞는 제품이 없어요.</p>';
+    return;
+  }
+
+  const arrowFor = (key) => {
+    if (colSortKey !== key) return `<span class="sort-arrow">⇅</span>`;
+    return `<span class="sort-arrow">${colSortAsc ? '↑' : '↓'}</span>`;
+  };
+
+  wrap.innerHTML = `
+    <table class="product-table">
+      <thead>
+        <tr>
+          <th>카테고리</th>
+          <th class="sortable${colSortKey === 'brand' ? ' sort-active' : ''}" onclick="toggleColSort('brand')">브랜드 ${arrowFor('brand')}</th>
+          <th class="sortable${colSortKey === 'name' ? ' sort-active' : ''}" onclick="toggleColSort('name')">제품명 ${arrowFor('name')}</th>
+          <th class="sortable${colSortKey === 'inhale' ? ' sort-active' : ''}" onclick="toggleColSort('inhale')">흡입방식 ${arrowFor('inhale')}</th>
+          <th>관리</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${list.map(p => `
+          <tr>
+            <td><span class="cat-badge">${p.category}</span></td>
+            <td>${p.brand}</td>
+            <td style="font-family:'Noto Serif KR',serif">${p.name}</td>
+            <td style="color:var(--mid)">${p.inhale || '—'}</td>
+            <td>
+              <div class="table-actions">
+                <button class="btn-edit" onclick="openEditForm('${p.id}')">수정</button>
+                <button class="btn-delete" onclick="deleteProduct('${p.id}', '${p.name}')">삭제</button>
+              </div>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+// ============================================================
+// 폼 열기/닫기
+// ============================================================
+function openForm() {
+  editingId = null;
+  document.getElementById('panel-title').textContent = '새 제품 추가';
+  document.getElementById('product-form').reset();
+  document.getElementById('dynamic-fields').innerHTML = '';
+  flavorCount = 0;
+  document.getElementById('form-panel').classList.add('open');
+  document.getElementById('panel-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeForm() {
+  document.getElementById('form-panel').classList.remove('open');
+  document.getElementById('panel-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+async function openEditForm(id) {
+  const { data: p } = await sb.from('products').select('*').eq('id', id).single();
+  if (!p) return;
+  editingId = id;
+  document.getElementById('panel-title').textContent = '제품 수정';
+  document.getElementById('f-category').value = p.category;
+  document.getElementById('f-brand').value = p.brand;
+  document.getElementById('f-name').value = p.name;
+  document.getElementById('f-thumbnail').value = p.thumbnail || '';
+  onCategoryChange();
+
+  // 값 채우기
+  setTimeout(async () => {
+    setInhaleVal('f-inhale', p.inhale);
+    setInhaleVal('f-operation', p.operation);
+    setVal('f-nicotine', p.nicotine);
+    setVal('f-volume', p.volume);
+    setVal('f-puff', p.puff);
+    setVal('f-price', p.price_range);
+    setVal('f-battery', p.battery);
+    setVal('f-pod-capacity', p.pod_capacity);
+    setVal('f-resistance', p.resistance);
+    setVal('f-review-short', p.review_short);
+    setVal('f-review-full', p.review_full);
+    setVal('f-youtube', p.youtube);
+    if (p.sweetness) setScore('f-sweetness', p.sweetness);
+    if (p.cooling) setScore('f-cooling', p.cooling);
+    if (p.hit) setScore('f-hit', p.hit);
+    if (p.tags) p.tags.forEach(t => addTag('f-tags', t));
+    if (p.colors) p.colors.forEach(c => {
+      const btn = document.querySelector(`.color-opt[data-color="${c}"]`);
+      if (btn) btn.classList.add('selected');
+    });
+    // 일회용: flavors 불러오기
+    if (p.category === '일회용') {
+      const { data: flavors } = await sb.from('flavors').select('*').eq('product_id', id);
+      if (flavors) flavors.forEach(f => addFlavorCard(f));
+    }
+  }, 50);
+
+  document.getElementById('form-panel').classList.add('open');
+  document.getElementById('panel-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function setVal(id, val) {
+  const el = document.getElementById(id);
+  if (el && val !== undefined && val !== null) el.value = val;
+}
+
+// ============================================================
+// 카테고리별 동적 폼
+// ============================================================
+function onCategoryChange() {
+  const cat = document.getElementById('f-category').value;
+  const area = document.getElementById('dynamic-fields');
+  flavorCount = 0;
+
+  if (!cat) { area.innerHTML = ''; return; }
+
+  if (cat === '액상') {
+    area.innerHTML = `
+      ${sectionLabel('흡입 정보')}
+      <div class="form-field">
+        <label>흡입 방식 (복수 선택 가능)</label>
+        ${inhaleChips('f-inhale')}
+      </div>
+      <div class="form-row">
+        ${selectField('f-nicotine', '니코틴 농도', ['일반','고농도'])}
+        <div class="form-field"><label>니코틴 수치 (%)</label><input type="number" id="f-nicotine-val" placeholder="3.0" step="0.1"></div>
+      </div>
+      <div class="form-field"><label>용량</label><input type="text" id="f-volume" placeholder="30ml"></div>
+      ${sectionLabel('맛 특성 (1~10점)')}
+      ${scoreField('f-sweetness', '당도', '1 = 무당, 10 = 매우 달콤')}
+      ${scoreField('f-cooling', '쿨링', '1 = 없음, 10 = 아주 강함')}
+      ${scoreField('f-hit', '타격감', '1 = 부드러움, 10 = 아주 강함')}
+      ${sectionLabel('후기 & 태그')}
+      <div class="form-field"><label>한마디 (짧은 후기)</label><input type="text" id="f-review-short" placeholder="핵심 한 줄"></div>
+      <div class="form-field"><label>전체 후기</label><textarea id="f-review-full" rows="4" placeholder="상세 후기"></textarea></div>
+      <div class="form-field"><label>태그 (입력 후 Enter)</label>${tagInput('f-tags')}</div>
+      <div class="form-field"><label>유튜브 링크</label><input type="text" id="f-youtube" placeholder="https://youtube.com/..."></div>
+    `;
+  } else if (cat === '기기') {
+    area.innerHTML = `
+      ${sectionLabel('기기 정보')}
+      <div class="form-field">
+        <label>흡입 방식 (복수 선택 가능)</label>
+        ${inhaleChips('f-inhale')}
+      </div>
+      <div class="form-field">
+        <label>작동 방식 (복수 선택 가능)</label>
+        <div class="scale-group" id="f-operation">
+          <button type="button" class="scale-opt" data-val="오토" onclick="toggleInhale(this)">오토</button>
+          <button type="button" class="scale-opt" data-val="버튼" onclick="toggleInhale(this)">버튼</button>
+        </div>
+      </div>
+      ${selectField('f-price', '가격대', ['5만원 이하','5만원 이상'])}
+      ${sectionLabel('스펙')}
+      <div class="form-row">
+        <div class="form-field">
+          <label>배터리 용량 <span style="font-weight:300;font-size:11px;color:var(--mid);text-transform:none;letter-spacing:0">(숫자만, mAh 자동표기)</span></label>
+          <input type="text" id="f-battery" placeholder="1500">
+        </div>
+        <div class="form-field">
+          <label>팟 용량 <span style="font-weight:300;font-size:11px;color:var(--mid);text-transform:none;letter-spacing:0">(숫자만, ml 자동표기)</span></label>
+          <input type="text" id="f-pod-capacity" placeholder="2">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-field">
+          <label>저항값 <span style="font-weight:300;font-size:11px;color:var(--mid);text-transform:none;letter-spacing:0">(숫자만, Ω 자동표기)</span></label>
+          <input type="text" id="f-resistance" placeholder="0.8">
+        </div>
+      </div>
+      ${sectionLabel('컬러 라인업')}
+      <div class="form-field">
+        <div class="color-select-row">
+          ${Object.entries(colorMap).map(([key, val]) => `
+            <button type="button" class="color-opt" data-color="${key}" onclick="toggleColor(this)">
+              <span class="color-dot" style="background:${val}"></span>${colorLabel[key]}
+            </button>
+          `).join('')}
+        </div>
+      </div>
+      ${sectionLabel('후기 & 태그')}
+      <div class="form-field"><label>한마디 (짧은 후기)</label><input type="text" id="f-review-short" placeholder="핵심 한 줄"></div>
+      <div class="form-field"><label>전체 후기</label><textarea id="f-review-full" rows="4" placeholder="상세 후기"></textarea></div>
+      <div class="form-field"><label>태그 (입력 후 Enter)</label>${tagInput('f-tags')}</div>
+      <div class="form-field"><label>유튜브 링크</label><input type="text" id="f-youtube" placeholder="https://youtube.com/..."></div>
+    `;
+  } else if (cat === '일회용') {
+    area.innerHTML = `
+      ${sectionLabel('기기 정보')}
+      <div class="form-field">
+        <label>흡입 방식 (복수 선택 가능)</label>
+        ${inhaleChips('f-inhale')}
+      </div>
+      <div class="form-row">
+        ${selectField('f-price', '가격대', ['1만원대','2만원대','3만원대','4만원 이상'])}
+        <div class="form-field"><label>퍼프 수</label><input type="number" id="f-puff" placeholder="20000"></div>
+      </div>
+      ${sectionLabel('맛 라인업')}
+      <div id="flavor-list"></div>
+      <button type="button" class="btn-add-flavor" onclick="addFlavorCard()">+ 맛 추가</button>
+    `;
+  }
+
+  setTimeout(() => bindTagInputs(), 50);
+}
+
+// ============================================================
+// 폼 헬퍼
+// ============================================================
+function sectionLabel(text) {
+  return `<p class="form-section-label">${text}</p>`;
+}
+
+function selectField(id, label, options) {
+  return `
+    <div class="form-field">
+      <label>${label}</label>
+      <select id="${id}">
+        <option value="">선택</option>
+        ${options.map(o => `<option value="${o}">${o}</option>`).join('')}
+      </select>
+    </div>
+  `;
+}
+
+// 흡입 방식 다중 선택 chip
+function inhaleChips(groupId) {
+  return `
+    <div class="scale-group" id="${groupId}">
+      <button type="button" class="scale-opt" data-val="입호흡" onclick="toggleInhale(this)">입호흡</button>
+      <button type="button" class="scale-opt" data-val="폐호흡" onclick="toggleInhale(this)">폐호흡</button>
+    </div>
+  `;
+}
+
+function toggleInhale(btn) { btn.classList.toggle('selected'); }
+
+function getInhaleVal(groupId) {
+  const selected = Array.from(document.querySelectorAll(`#${groupId} .scale-opt.selected`))
+    .map(b => b.dataset.val);
+  if (selected.length === 0) return null;
+  if (selected.length === 2) return '입호흡,폐호흡';
+  return selected[0];
+}
+
+function setInhaleVal(groupId, val) {
+  if (!val) return;
+  const vals = val.split(',');
+  document.querySelectorAll(`#${groupId} .scale-opt`).forEach(b => {
+    if (vals.includes(b.dataset.val)) b.classList.add('selected');
+  });
+}
+
+// 1~10 점수 입력 필드
+function scoreField(id, label, hint) {
+  return `
+    <div class="form-field">
+      <label>${label} <span style="font-weight:300;text-transform:none;letter-spacing:0;font-size:11px;color:var(--mid)">(${hint})</span></label>
+      <input type="number" id="${id}" min="1" max="10" placeholder="1~10" style="width:100px">
+    </div>
+  `;
+}
+
+function getScore(id) {
+  const v = parseInt(document.getElementById(id)?.value);
+  return (v >= 1 && v <= 10) ? v : null;
+}
+
+function setScore(id, val) {
+  const el = document.getElementById(id);
+  if (el && val) el.value = val;
+}
+
+function tagInput(id) {
+  return `
+    <div class="tag-input-wrap" id="${id}-wrap" onclick="document.getElementById('${id}-input').focus()">
+      <input class="tag-input" id="${id}-input" placeholder="#태그 입력 후 Enter">
+    </div>
+  `;
+}
+
+function toggleColor(btn) { btn.classList.toggle('selected'); }
+
+// 태그
+function bindTagInputs() {
+  document.querySelectorAll('.tag-input').forEach(input => {
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ',') {
+        e.preventDefault();
+        const val = input.value.trim().replace(/,/g,'');
+        if (!val) return;
+        const tag = val.startsWith('#') ? val : '#' + val;
+        addTag(input.id.replace('-input',''), tag);
+        input.value = '';
+      }
+      if (e.key === 'Backspace' && !input.value) {
+        const wrap = input.parentElement;
+        const tags = wrap.querySelectorAll('.tag-item');
+        if (tags.length) tags[tags.length-1].remove();
+      }
+    });
+  });
+}
+
+function addTag(wrapperId, tag) {
+  const wrap = document.getElementById(wrapperId + '-wrap');
+  const input = document.getElementById(wrapperId + '-input');
+  if (!wrap || !input) return;
+  const item = document.createElement('span');
+  item.className = 'tag-item';
+  item.innerHTML = `${tag}<button type="button" class="tag-remove" onclick="this.parentElement.remove()">×</button>`;
+  wrap.insertBefore(item, input);
+}
+
+function getTags(wrapperId) {
+  const wrap = document.getElementById(wrapperId + '-wrap');
+  if (!wrap) return [];
+  return Array.from(wrap.querySelectorAll('.tag-item')).map(el => el.textContent.replace('×','').trim());
+}
+
+// ============================================================
+// 일회용 맛 카드
+// ============================================================
+function addFlavorCard(data) {
+  flavorCount++;
+  const idx = flavorCount;
+  const list = document.getElementById('flavor-list');
+  const card = document.createElement('div');
+  card.className = 'flavor-card';
+  card.id = `flavor-card-${idx}`;
+  card.innerHTML = `
+    <div class="flavor-card-header">
+      <span class="flavor-card-title">맛 ${idx}</span>
+      <button type="button" class="btn-remove-flavor" onclick="document.getElementById('flavor-card-${idx}').remove()">✕</button>
+    </div>
+    <div class="form-field"><label>맛 이름</label><input type="text" id="fl-name-${idx}" placeholder="예: 복숭아 요거트" value="${data?.flavor_name||''}"></div>
+    <div class="form-field"><label>썸네일 URL</label><input type="text" id="fl-thumb-${idx}" placeholder="https://..." value="${data?.thumbnail||''}"></div>
+    <div class="form-row">
+      <div class="form-field"><label>니코틴</label>
+        <select id="fl-nic-${idx}"><option value="">선택</option><option ${data?.nicotine==='일반'?'selected':''}>일반</option><option ${data?.nicotine==='고농도'?'selected':''}>고농도</option></select>
+      </div>
+      <div class="form-field"><label>니코틴 수치(%)</label><input type="number" id="fl-nicval-${idx}" placeholder="5.0" step="0.1" value="${data?.nicotine_value||''}"></div>
+    </div>
+    ${scoreField(`fl-sweetness-${idx}`, '당도', '1 = 무당, 10 = 매우 달콤')}
+    ${scoreField(`fl-cooling-${idx}`, '쿨링', '1 = 없음, 10 = 아주 강함')}
+    ${scoreField(`fl-hit-${idx}`, '타격감', '1 = 부드러움, 10 = 아주 강함')}
+    <div class="form-field"><label>한마디</label><input type="text" id="fl-short-${idx}" placeholder="핵심 한 줄" value="${data?.review_short||''}"></div>
+    <div class="form-field"><label>전체 후기</label><textarea id="fl-full-${idx}" rows="3">${data?.review_full||''}</textarea></div>
+    <div class="form-field"><label>태그 (Enter)</label>${tagInput(`fl-tags-${idx}`)}</div>
+    <div class="form-field"><label>유튜브</label><input type="text" id="fl-yt-${idx}" placeholder="https://..." value="${data?.youtube||''}"></div>
+  `;
+  list.appendChild(card);
+  setTimeout(() => {
+    bindTagInputs();
+    if (data?.tags) data.tags.forEach(t => addTag(`fl-tags-${idx}`, t));
+    if (data?.sweetness) setScore(`fl-sweetness-${idx}`, data.sweetness);
+    if (data?.cooling) setScore(`fl-cooling-${idx}`, data.cooling);
+    if (data?.hit) setScore(`fl-hit-${idx}`, data.hit);
+  }, 50);
+}
+
+function getFlavorData() {
+  const cards = document.querySelectorAll('.flavor-card');
+  return Array.from(cards).map(card => {
+    const idx = card.id.replace('flavor-card-','');
+    return {
+      flavor_name: document.getElementById(`fl-name-${idx}`)?.value || '',
+      thumbnail: document.getElementById(`fl-thumb-${idx}`)?.value || '',
+      nicotine: document.getElementById(`fl-nic-${idx}`)?.value || '',
+      nicotine_value: parseFloat(document.getElementById(`fl-nicval-${idx}`)?.value) || null,
+      sweetness: getScore(`fl-sweetness-${idx}`),
+      cooling: getScore(`fl-cooling-${idx}`),
+      hit: getScore(`fl-hit-${idx}`),
+      review_short: document.getElementById(`fl-short-${idx}`)?.value || '',
+      review_full: document.getElementById(`fl-full-${idx}`)?.value || '',
+      tags: getTags(`fl-tags-${idx}`),
+      youtube: document.getElementById(`fl-yt-${idx}`)?.value || null,
+    };
+  });
+}
+
+// ============================================================
+// 저장
+// ============================================================
+async function saveProduct() {
+  const btn = document.getElementById('btn-save');
+  const cat = document.getElementById('f-category').value;
+  const brand = document.getElementById('f-brand').value.trim();
+  const name = document.getElementById('f-name').value.trim();
+
+  if (!cat || !brand || !name) {
+    showToast('카테고리, 브랜드, 제품명은 필수야.', 'error'); return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = '저장 중...';
+
+  // ID 생성
+  const id = editingId || `${cat === '액상' ? 'liquid' : cat === '기기' ? 'device' : 'disposable'}_${Date.now()}`;
+
+  const productData = {
+    id,
+    category: cat,
+    brand,
+    name,
+    thumbnail: document.getElementById('f-thumbnail').value || '',
+    inhale: getInhaleVal('f-inhale'),
+    operation: getInhaleVal('f-operation'),
+    nicotine: document.getElementById('f-nicotine')?.value || null,
+    nicotine_value: parseFloat(document.getElementById('f-nicotine-val')?.value) || null,
+    volume: document.getElementById('f-volume')?.value || null,
+    puff: parseInt(document.getElementById('f-puff')?.value) || null,
+    price_range: document.getElementById('f-price')?.value || null,
+    battery: document.getElementById('f-battery')?.value || null,
+    pod_capacity: document.getElementById('f-pod-capacity')?.value || null,
+    resistance: document.getElementById('f-resistance')?.value || null,
+    colors: cat === '기기' ? Array.from(document.querySelectorAll('.color-opt.selected')).map(b => b.dataset.color) : null,
+    sweetness: getScore('f-sweetness'),
+    cooling: getScore('f-cooling'),
+    hit: getScore('f-hit'),
+    review_short: document.getElementById('f-review-short')?.value || null,
+    review_full: document.getElementById('f-review-full')?.value || null,
+    tags: getTags('f-tags'),
+    youtube: document.getElementById('f-youtube')?.value || null,
+  };
+
+  const { error } = editingId
+    ? await sb.from('products').update(productData).eq('id', id)
+    : await sb.from('products').insert(productData);
+
+  if (error) {
+    showToast('저장 실패. 콘솔 확인해봐.', 'error');
+    console.error(error);
+    btn.disabled = false; btn.textContent = '저장하기';
+    return;
+  }
+
+  // 일회용: flavors 저장
+  if (cat === '일회용') {
+    if (editingId) await sb.from('flavors').delete().eq('product_id', id);
+    const flavors = getFlavorData().map((f, i) => ({
+      ...f,
+      id: `${id}_f${i+1}`,
+      product_id: id,
+    }));
+    if (flavors.length) {
+      const { error: fe } = await sb.from('flavors').insert(flavors);
+      if (fe) console.error('flavor 저장 실패:', fe);
+    }
+  }
+
+  showToast(editingId ? '수정 완료!' : '제품 추가 완료!', 'success');
+  closeForm();
+  loadProducts();
+  btn.disabled = false; btn.textContent = '저장하기';
+}
+
+// ============================================================
+// 삭제
+// ============================================================
+async function deleteProduct(id, name) {
+  if (!confirm(`"${name}" 삭제할 거야? 되돌릴 수 없어.`)) return;
+  const { error } = await sb.from('products').delete().eq('id', id);
+  if (error) { showToast('삭제 실패.', 'error'); return; }
+  showToast('삭제 완료.', 'success');
+  loadProducts();
+}
+
+// ============================================================
+// 토스트
+// ============================================================
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `show ${type}`;
+  setTimeout(() => t.className = '', 2800);
+}
+</script>
+</body>
+</html>
