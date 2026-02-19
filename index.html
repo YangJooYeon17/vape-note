@@ -1183,7 +1183,7 @@ function renderDetailContent(product, flavorIdx) {
 }
 
 function escapeStr(str) {
-  return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+  return str.replace(/\r?\n/g, '\\n').replace(/'/g, "\\'").replace(/"/g, '&quot;');
 }
 
 function openDetail(product) {
@@ -1214,7 +1214,7 @@ function closeDetailBtn() {
 // review_full 팝업
 // ============================================================
 function openReviewPopup(text) {
-  document.getElementById('review-popup-text').textContent = text;
+  document.getElementById('review-popup-text').textContent = text.replace(/\\n/g, '\n');
   document.getElementById('review-popup').classList.add('open');
 }
 function closeReviewPopup(e) {
